@@ -64,7 +64,7 @@ groups:
 ```
 
 - `itm_server_url` - HTTP URL of your TEPS or APM Server, ex.: "http://localhost:15210"
-- `itm_server_user` - for example `sysadmin` for ITM v6 or smadmin for APM v8
+- `itm_server_user` - for example `sysadmin` for ITM v6 or `smadmin` for APM v8
 - `itm_server_password`
 
 The section `groups:` specifies which ITM/APM metrics should be collected and exposed by the experter. ITM exporter asynchronically collects metrics for every group. 
@@ -238,9 +238,9 @@ If you are not familiar with Prometheus, a good option is to start with full Pro
 1. Install Docker and Docker Compose: https://docs.docker.com/compose/install/
 2. `git clone https://github.com/vegasbrianc/prometheus`
 3. `cd prometheus`
-4. `vi prometheus/prometheus.yml` and add `itm-exporter` job as describe above.
+4. `vi prometheus/prometheus.yml` and add `itm-exporter` job as described above.
 5. `docker-compose up -d`
-6. Check Prometheus URL via web browser: http://localhost:9090/targets ad make sure that Prometheus server can scrape `itm-exporter`
+6. Check Prometheus URL via web browser: http://localhost:9090/targets and make sure that Prometheus server can scrape `itm-exporter`
 7. If the job status is `UP`, access Grafana via web browser: http://localhost:9090/ (admin/foobar).
 8. [Import](https://grafana.com/docs/grafana/latest/reference/export_import/) both dashboards included in this repo.
 
