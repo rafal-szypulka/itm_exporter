@@ -4,7 +4,7 @@ The exporter uses ITM REST API to collect metrics from IBM ITM/APM. Note that IT
 
 
 ## How to use
-Download and unpack the ITM Exporter release. Copy the exporter binary and [config file](config.yml) to your ITM v6 TEPS server or IBM APM v8 server.
+Download and unpack the ITM Exporter [release](https://github.com/rafal-szypulka/itm_exporter/releases). Copy the exporter binary and [config file](config.yml) to your ITM v6 TEPS server or IBM APM v8 server.
 
 ```
 itm_exporter export
