@@ -1,5 +1,5 @@
 # ITM Exporter
-ITM Exporter is a Prometheus exporter for IBM Tivoli Monitoring v6 and IBM Application Performance Management v8 (on-prem.
+ITM Exporter is a Prometheus exporter for IBM Tivoli Monitoring v6 and IBM Application Performance Management v8 (on-prem).
 The exporter uses ITM REST API to collect metrics from IBM ITM/APM. Note that ITM REST API is [not oficially supported](https://developer.ibm.com/answers/questions/358915/is-itm-rest-api-officially-supported-customer-uses/).
 
 
@@ -69,11 +69,11 @@ groups:
 
 The section `groups:` specifies which ITM/APM metrics should be collected and exposed by the experter. ITM exporter asynchronically collects metrics for every group. 
 
-- `datasets_uri` - it is a part of the API request URL that identifies particular agent type. The exporter helps a bit in the identification of proper `datasets_uri` for the agent type you'd like to collect. Run the following command:
+- `datasets_uri` - it is a part of the API request URL that identifies particular agent type. The exporter can help a bit in the identification of proper `datasets_uri` for the agent type you'd like to collect. Run the following command to list all supported monitoring agent types on your ITM or APM server:
 ```
   itm_exporter listAgentTypes --temsName=TEMS 
 ```
-where `temsName` is your ITM TEMS label like `TEMS` or `KD8` if you connect to APM v8 server.
+where `temsName` is your ITM TEMS label like `TEMS` (or `KD8` if you connect to APM v8 server).
 Example output:
 ```
 +---------------------------------+--------------------------------------------------------------------+
@@ -182,7 +182,7 @@ Example output:
 | Recording Time               | WRITETIME  |
 +------------------------------+------------+
 ```
-- `managed_system_group` - the name of the managed system group, grouping agents in scope of the collection.
+- `managed_system_group` - the name of the `Managed System Group` grouping agents in scope of the collection.
 
 ## ITM Exporter CLI options
 ```
