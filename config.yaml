@@ -1,0 +1,19 @@
+itm_server_url: "http://localhost:15210"
+itm_server_user: "sysadmin"
+itm_server_password: "pass"
+groups: 
+- name: "KLZCPU"
+  datasets_uri: "/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets"
+  labels: ["CPUID", "ORIGINNODE"]
+  metrics: ["BUSYCPU", "IDLECPU", "SYSCPU", "USRCPU", "WAITCPU"]
+  managed_system_group: "*LINUX_SYSTEM"
+- name: "KLZVM"
+  datasets_uri: "/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets"
+  labels: ["ORIGINNODE"]
+  metrics: ["MEMUSEDPCT", "VSFREEPCT"]
+  managed_system_group: "*LINUX_SYSTEM"
+- name: "KLZDISK"
+  datasets_uri: '/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets'
+  labels: ["ORIGINNODE", "DSKNAME", "MOUNTPT"]
+  metrics: ["DSKFREEPCT", "DSKUSEDPCT", "DSKFREE", "DSKUSED", "INDFREEPCT"]
+  managed_system_group: "*LINUX_SYSTEM"
