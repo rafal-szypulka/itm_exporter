@@ -4,15 +4,15 @@ The exporter uses ITM REST API to collect metrics from IBM ITM/APM. Note that IT
 
 
 ## How to use
-Download and unpack the ITM Exporter [release](https://github.com/rafal-szypulka/itm_exporter/releases). Copy the exporter binary and [config file](config.yml) to your ITM v6 TEPS server or IBM APM v8 server.
+Download and unpack the ITM Exporter [release](https://github.com/rafal-szypulka/itm_exporter/releases). Copy the exporter binary and [config file](config.yaml) to your ITM v6 TEPS server or IBM APM v8 server.
 
 ```
 itm_exporter export
 ```
-If your config file name is different than `config.yml`
+If your config file name is different than `config.yaml`
 
 ```
-itm_exporter export -c <config_file_name>.yml
+itm_exporter export -c <config_file_name>.yaml
 ```
 The above should start an exporter on default port `8000`. You can check if it works using:
 ```
@@ -40,7 +40,7 @@ It is not recommended to specify `scrape_interval` less than 60s.
 
 ## ITM Exporter configuration
 
-Example config.yml:
+Example config.yaml:
 ```yaml
 itm_server_url: "http://localhost:15210"
 itm_server_user: "sysadmin"
@@ -192,7 +192,7 @@ ITM exporter for Prometheus.
 
 Flags:
       --help                     Show context-sensitive help (also try --help-long and --help-man).
-  -c, --configFile="config.yml"  ITM exporter configuration file.
+  -c, --configFile="config.yaml"  ITM exporter configuration file.
   -s, --apmServerURL=APMSERVERURL
                                  HTTP URL of the CURI REST API server.
   -u, --apmServerUser=APMSERVERUSER
