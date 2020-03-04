@@ -49,7 +49,7 @@ var (
 	c                          Config
 	conf                       = c.getConf()
 	app                        = kingpin.New("itm_exporter", "ITM exporter for Prometheus.")
-	configFile                 = app.Flag("configFile", "ITM exporter configuration file.").Short('c').Default("config.yml").String()
+	configFile                 = app.Flag("configFile", "ITM exporter configuration file.").Short('c').Default("config.yaml").String()
 	itmServer                  = app.Flag("apmServerURL", "HTTP URL of the CURI REST API server.").Short('s').String()
 	itmServerUser              = app.Flag("apmServerUser", "CURI API user.").Short('u').String()
 	itmServerPassword          = app.Flag("apmServerPassword", "CURI API password.").Short('p').String()
@@ -205,11 +205,13 @@ func (c ITMCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 		if group.Name == "KLZNET" {
 			url = itmServerURL + "/ibm/tivoli/rest" + group.DatasetsURI +
-				metricGroup + "/items?param_SourceToken=*LINUX_SYSTEM&optimize=true&param_refId=" +
+				metricGroup + "/items?param_SourceToken=" + group.ManagedSystemGroup +
+				"&optimize=true&param_refId=" +
 				guid.String() + "&properties=all"
 		} else {
 			url = itmServerURL + "/ibm/tivoli/rest" + group.DatasetsURI +
-				metricGroup + "/items?param_SourceToken=*LINUX_SYSTEM&optimize=true&param_refId=" +
+				metricGroup + "/items?param_SourceToken=" + group.ManagedSystemGroup +
+				"&optimize=true&param_refId=" +
 				guid.String() + "&properties=" + strings.Join(group.Labels, ",") + "," +
 				strings.Join(group.Metrics, ",")
 		}
