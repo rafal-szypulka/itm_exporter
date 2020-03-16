@@ -1,6 +1,8 @@
-itm_server_url: "http://localhost:15210"
+itm_server_url: "http://localhost:15200"
 itm_server_user: "sysadmin"
 itm_server_password: "pass"
+connection_timeout: 8
+collection_timeout: 40
 groups: 
 - name: "KLZCPU"
   datasets_uri: "/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets"

@@ -1,6 +1,9 @@
 package main
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 // Datasource struct used in listAgentTypes command
 type Datasource struct {
@@ -93,10 +96,12 @@ type Items struct {
 
 // Config struct that maps config yaml
 type Config struct {
-	ItmServerURL      string   `yaml:"itm_server_url"`
-	ItmServerUser     string   `yaml:"itm_server_user"`
-	ItmServerPassword string   `yaml:"itm_server_password"`
-	Groups            []Groups `yaml:"groups"`
+	ItmServerURL      string        `yaml:"itm_server_url"`
+	ItmServerUser     string        `yaml:"itm_server_user"`
+	ItmServerPassword string        `yaml:"itm_server_password"`
+	ConnectionTimeout time.Duration `yaml:"connection_timeout"`
+	CollectionTimeout time.Duration `yaml:"collection_timeout"`
+	Groups            []Groups      `yaml:"groups"`
 }
 
 // Groups struct is a subset of Config struct

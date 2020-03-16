@@ -1,18 +1,13 @@
 # ITM Exporter
-ITM Exporter is a Prometheus exporter for IBM Tivoli Monitoring v6 and IBM Application Performance Management v8 (on-prem).
+ITM Exporter is a Prometheus exporter for IBM Tivoli Monitoring v6 and IBM Application Performance Management v8 (on-prem.
 The exporter uses ITM REST API to collect metrics from IBM ITM/APM. Note that ITM REST API is [not oficially supported](https://developer.ibm.com/answers/questions/358915/is-itm-rest-api-officially-supported-customer-uses/).
 
 
 ## How to use
-Download and unpack the ITM Exporter [release](https://github.com/rafal-szypulka/itm_exporter/releases). Copy the exporter binary and [config file](config.yaml) to your ITM v6 TEPS server or IBM APM v8 server.
+Download and unpack the ITM Exporter release. Copy the exporter binary and [config file `config.yaml`](config.yaml) to your ITM v6 TEPS server or IBM APM v8 server.
 
 ```
 itm_exporter export
-```
-If your config file name is different than `config.yaml`
-
-```
-itm_exporter export -c <config_file_name>.yaml
 ```
 The above should start an exporter on default port `8000`. You can check if it works using:
 ```
@@ -24,6 +19,11 @@ Check all available options with:
 ```
 itm_exporter --help
 ```
+or
+```
+itm_exporter --help-long
+```
+
 
 ## Prometheus configuration
 
@@ -32,7 +32,7 @@ Add the following job to the `scrape_configs` section:
 scrape_configs:
   - job_name: 'itm-exporter'
     scrape_interval: 60s
-    scrape_timeout: 30s
+    scrape_timeout: 45s
     static_configs:
       - targets: ['<exporter_ip>:8000']
 ```
@@ -42,9 +42,11 @@ It is not recommended to specify `scrape_interval` less than 60s.
 
 Example config.yaml:
 ```yaml
-itm_server_url: "http://localhost:15210"
+itm_server_url: "http://localhost:15200"
 itm_server_user: "sysadmin"
 itm_server_password: "pass"
+connection_timeout: 8
+collection_timeout: 40
 groups: 
 - name: "KLZCPU"
   datasets_uri: "/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets"
@@ -64,16 +66,19 @@ groups:
 ```
 
 - `itm_server_url` - HTTP URL of your TEPS or APM Server, ex.: "http://localhost:15210"
-- `itm_server_user` - for example `sysadmin` for ITM v6 or `smadmin` for APM v8
+- `itm_server_user` - for example `sysadmin` for ITM v6 or smadmin for APM v8
 - `itm_server_password`
+- `connection_timeout` - maximum time allowed for a simple http request from `itm_exporter` to ITM CURI API.
+- `collection_timeout` - maximum time allowed for collecting the latest snapshot of metric values for a single Attribute Group.
+
 
 The section `groups:` specifies which ITM/APM metrics should be collected and exposed by the experter. ITM exporter asynchronically collects metrics for every group. 
 
-- `datasets_uri` - it is a part of the API request URL that identifies particular agent type. The exporter can help a bit in the identification of proper `datasets_uri` for the agent type you'd like to collect. Run the following command to list all supported monitoring agent types on your ITM or APM server:
+- `datasets_uri` - it is a part of the API request URL that identifies particular agent type. The exporter helps a bit in the identification of proper `datasets_uri` for the agent type you'd like to collect. Run the following command:
 ```
   itm_exporter listAgentTypes --temsName=TEMS 
 ```
-where `temsName` is your ITM TEMS label like `TEMS` (or `KD8` if you connect to APM v8 server).
+where `temsName` is your ITM TEMS label like `TEMS` or `KD8` if you connect to APM v8 server.
 Example output:
 ```
 +---------------------------------+--------------------------------------------------------------------+
@@ -182,7 +187,7 @@ Example output:
 | Recording Time               | WRITETIME  |
 +------------------------------+------------+
 ```
-- `managed_system_group` - the name of the `Managed System Group` grouping agents in scope of the collection.
+- `managed_system_group` - the name of the managed system group, grouping agents in scope of the collection.
 
 ## ITM Exporter CLI options
 ```
@@ -191,17 +196,16 @@ usage: itm_exporter [<flags>] <command> [<args> ...]
 ITM exporter for Prometheus.
 
 Flags:
-      --help                     Show context-sensitive help (also try --help-long and --help-man).
-  -c, --configFile="config.yaml"  ITM exporter configuration file.
+      --help        Show context-sensitive help (also try --help-long and --help-man).
   -s, --apmServerURL=APMSERVERURL
-                                 HTTP URL of the CURI REST API server.
+                    HTTP URL of the CURI REST API server.
   -u, --apmServerUser=APMSERVERUSER
-                                 CURI API user.
+                    CURI API user.
   -p, --apmServerPassword=APMSERVERPASSWORD
-                                 CURI API password.
+                    CURI API password.
       --web.listen-address=":8000"
-                                 The address to listen on for HTTP requests.
-  -v, --verboseLog               Verbose logging
+                    The address to listen on for HTTP requests.
+  -v, --verboseLog  Verbose logging
 
 Commands:
   help [<command>...]
@@ -213,14 +217,13 @@ Commands:
 
     -g, --attributeGroup=ATTRIBUTEGROUP
                            Attribute group
-    -d, --dataset=DATASET  Dataset (Agent type) URI. You can find it using command: 'itm_exporter listAgentTypes'. Example Dataset URI for Linux OS Agent:
-                           '/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets'.
+    -d, --dataset=DATASET  Dataset (Agent type) URI. You can find it using command: 'itm_exporter listAgentTypes'. Example Dataset URI for Linux OS Agent: '/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets'.
 
-  listAttributeGroups --dataset=DATASET
+  listAttributeGroups --dataset=DATASET [<flags>]
     List available Attribute Groups for the given dataset.
 
-    -d, --dataset=DATASET  Dataset (Agent type) URI. You can find it using command: 'itm_exporter listAgentTypes'. Example Dataset URI for Linux OS Agent:
-                           '/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets'.
+    -d, --dataset=DATASET  Dataset (Agent type) URI. You can find it using command: 'itm_exporter listAgentTypes'. Example Dataset URI for Linux OS Agent: '/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets'.
+    -l, --long             List Attributes for every Attribute Group in dataset
 
   listAgentTypes --temsName=TEMSNAME
     Lists datasets (agent types).
@@ -238,9 +241,9 @@ If you are not familiar with Prometheus, a good option is to start with full Pro
 1. Install Docker and Docker Compose: https://docs.docker.com/compose/install/
 2. `git clone https://github.com/vegasbrianc/prometheus`
 3. `cd prometheus`
-4. `vi prometheus/prometheus.yml` and add `itm-exporter` job as described above.
+4. `vi prometheus/prometheus.yml` and add `itm-exporter` job as describe above.
 5. `docker-compose up -d`
-6. Check Prometheus URL via web browser: http://localhost:9090/targets and make sure that Prometheus server can scrape `itm-exporter`
+6. Check Prometheus URL via web browser: http://localhost:9090/targets ad make sure that Prometheus server can scrape `itm-exporter`
 7. If the job status is `UP`, access Grafana via web browser: http://localhost:9090/ (admin/foobar).
 8. [Import](https://grafana.com/docs/grafana/latest/reference/export_import/) both dashboards included in this repo.
 

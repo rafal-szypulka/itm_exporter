@@ -49,7 +49,6 @@ var (
 	c                          Config
 	conf                       = c.getConf()
 	app                        = kingpin.New("itm_exporter", "ITM exporter for Prometheus.")
-	configFile                 = app.Flag("configFile", "ITM exporter configuration file.").Short('c').Default("config.yaml").String()
 	itmServer                  = app.Flag("apmServerURL", "HTTP URL of the CURI REST API server.").Short('s').String()
 	itmServerUser              = app.Flag("apmServerUser", "CURI API user.").Short('u').String()
 	itmServerPassword          = app.Flag("apmServerPassword", "CURI API password.").Short('p').String()
@@ -60,6 +59,7 @@ var (
 	listAttributesDataset      = listAttributes.Flag("dataset", "Dataset (Agent type) URI. You can find it using command: 'itm_exporter listAgentTypes'. Example Dataset URI for Linux OS Agent: '/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets'.").Short('d').Required().String()
 	listAttributeGroups        = app.Command("listAttributeGroups", "List available Attribute Groups for the given dataset.")
 	listAttributeGroupsDataset = listAttributeGroups.Flag("dataset", "Dataset (Agent type) URI. You can find it using command: 'itm_exporter listAgentTypes'. Example Dataset URI for Linux OS Agent: '/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets'.").Short('d').Required().String()
+	listAGLong                 = listAttributeGroups.Flag("long", "List Attributes for every Attribute Group in dataset").Short('l').Bool()
 	listAgentTypes             = app.Command("listAgentTypes", "Lists datasets (agent types).")
 	listAgentTypesTEMS         = listAgentTypes.Flag("temsName", "ITM TEMS label (specify KD8 for APMv8).").Short('t').Required().String()
 	export                     = app.Command("export", "Start itm_exporter in exporter mode.")
@@ -85,6 +85,7 @@ func MakeAsyncRequest(urla string, group string, ch chan<- Result) {
 		itmUser  string
 		itmPass  string
 		jsession http.Cookie
+		timeout  time.Duration
 	)
 
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
@@ -92,18 +93,21 @@ func MakeAsyncRequest(urla string, group string, ch chan<- Result) {
 		log.Error(err)
 	}
 	u, err := url.Parse(urla)
+	req, err := http.NewRequest("GET", urla, nil)
 	if *itmServerUser != "" {
-		itmUser = *itmServerUser
-		itmPass = *itmServerPassword
+		req.SetBasicAuth(*itmServerUser, *itmServerPassword)
 	} else {
-		itmUser = conf.ItmServerUser
-		itmPass = conf.ItmServerPassword
+		req.SetBasicAuth(conf.ItmServerUser, conf.ItmServerPassword)
 	}
 
-	req, err := http.NewRequest("GET", urla, nil)
-	req.SetBasicAuth(itmUser, itmPass)
+	if conf.CollectionTimeout != 0 {
+		timeout = conf.CollectionTimeout
+	} else {
+		timeout = 40
+	}
+
 	cli := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: timeout * time.Second,
 		Jar:     jar,
 	}
 	resp, err := cli.Do(req)
@@ -156,6 +160,7 @@ func MakeAsyncRequest(urla string, group string, ch chan<- Result) {
 
 // MakeRequest makes sync HTTP request to the CURI API. For use in CLI commands defined in main()
 func MakeRequest(url string) ([]byte, int, error) {
+	var timeout time.Duration
 
 	req, err := http.NewRequest("GET", url, nil)
 	//fmt.Println(url)
@@ -164,8 +169,13 @@ func MakeRequest(url string) ([]byte, int, error) {
 	} else {
 		req.SetBasicAuth(conf.ItmServerUser, conf.ItmServerPassword)
 	}
+	if conf.ConnectionTimeout != 0 {
+		timeout = conf.ConnectionTimeout
+	} else {
+		timeout = 8
+	}
 	cli := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: timeout * time.Second,
 	}
 	resp, err := cli.Do(req)
 	if err != nil {
@@ -195,16 +205,19 @@ func MakeRequest(url string) ([]byte, int, error) {
 // Collect method executes concurrent HTTP requests to the ITM CURI API for each defined Attribute Group and generates Prometheus series
 func (c ITMCollector) Collect(ch chan<- prometheus.Metric) {
 
-	var itmServerURL string
-	var metricGroup string
-	var url string
-	var statusCode int
+	var (
+		itmServerURL string
+		metricGroup  string
+		url          string
+		statusCode   int
+	)
 
 	if *itmServer != "" {
 		itmServerURL = *itmServer
 	} else {
 		itmServerURL = conf.ItmServerURL
 	}
+
 	start := time.Now()
 
 	_, statusCode, err := MakeRequest(itmServerURL + "/ibm/tivoli/rest/providers")
@@ -232,7 +245,6 @@ func (c ITMCollector) Collect(ch chan<- prometheus.Metric) {
 					guid.String() + "&properties=" + strings.Join(group.Labels, ",") + "," +
 					strings.Join(group.Metrics, ",")
 			}
-
 			//fmt.Println(url)
 			go MakeAsyncRequest(url, group.Name, itm)
 		}
@@ -321,16 +333,16 @@ func main() {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAutoWrapText(false)
 	kingpin.HelpFlag.Short('h')
-
+	if *itmServer != "" {
+		itmServerURL = *itmServer
+	} else {
+		itmServerURL = conf.ItmServerURL
+	}
 	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
 	case listAgentTypes.FullCommand():
 		var datasource Datasource
 		table.SetHeader([]string{"Agent Type", "Dataset URI"})
-		if *itmServer != "" {
-			itmServerURL = *itmServer
-		} else {
-			itmServerURL = conf.ItmServerURL
-		}
+
 		responseBody, statusCode, err := MakeRequest(itmServerURL + "/ibm/tivoli/rest/providers/itm." + *listAgentTypesTEMS + "/datasources")
 		if err == nil && statusCode == 200 {
 			json.Unmarshal([]byte(responseBody), &datasource)
@@ -342,20 +354,34 @@ func main() {
 		os.Exit(0)
 	case listAttributeGroups.FullCommand():
 		var dataset Dataset
+		var column Columns
 		table.SetHeader([]string{"Description", "Attribute Group"})
-		if *itmServer != "" {
-			itmServerURL = *itmServer
-		} else {
-			itmServerURL = conf.ItmServerURL
-		}
 		responseBody, statusCode, err := MakeRequest(itmServerURL + "/ibm/tivoli/rest" + *listAttributeGroupsDataset)
 		if err == nil && statusCode == 200 {
 			json.Unmarshal([]byte(responseBody), &dataset)
 			for i := 0; i < len(dataset.Items); i++ {
-				table.Append([]string{strings.Replace(dataset.Items[i].Label, "\n", "", -1),
-					strings.Replace(dataset.Items[i].ID, "MetricGroup.", "", -1)})
+				if *listAGLong == true {
+					if *listAttributesGroup == "msys" {
+						responseBody, statusCode, err = MakeRequest(itmServerURL + "/ibm/tivoli/rest" + *listAttributesDataset + "/msys/columns")
+					} else {
+						responseBody, statusCode, err = MakeRequest(itmServerURL + "/ibm/tivoli/rest" + *listAttributeGroupsDataset + "/" + dataset.Items[i].ID + "/columns")
+					}
+					if err == nil && statusCode == 200 {
+						json.Unmarshal([]byte(responseBody), &column)
+						var s []string
+						for j := 0; j < len(column.Items); j++ {
+							s = append(s, strings.Replace(column.Items[j].ID, "MetricGroup.", "", -1))
+						}
+						attrList := strings.Join(s, "\", \"")
+						fmt.Printf("%v|%v|\"%s\"\n", strings.Replace(dataset.Items[i].Label, "\n", "", -1), strings.Replace(dataset.Items[i].ID, "MetricGroup.", "", -1), attrList)
+					}
+				} else {
+					table.Append([]string{strings.Replace(dataset.Items[i].Label, "\n", "", -1),
+						strings.Replace(dataset.Items[i].ID, "MetricGroup.", "", -1)})
+					table.Render()
+				}
+
 			}
-			table.Render()
 		}
 		os.Exit(0)
 	case listAttributes.FullCommand():
@@ -365,11 +391,6 @@ func main() {
 		var statusCode int
 
 		table.SetHeader([]string{"Description", "Attributes"})
-		if *itmServer != "" {
-			itmServerURL = *itmServer
-		} else {
-			itmServerURL = conf.ItmServerURL
-		}
 		if *listAttributesGroup == "msys" {
 			responseBody, statusCode, err = MakeRequest(itmServerURL + "/ibm/tivoli/rest" + *listAttributesDataset + "/msys/columns")
 		} else {
