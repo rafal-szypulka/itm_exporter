@@ -378,9 +378,11 @@ func main() {
 				} else {
 					table.Append([]string{strings.Replace(dataset.Items[i].Label, "\n", "", -1),
 						strings.Replace(dataset.Items[i].ID, "MetricGroup.", "", -1)})
-					table.Render()
 				}
 
+			}
+			if *listAGLong != true {
+				table.Render()
 			}
 		}
 		os.Exit(0)
