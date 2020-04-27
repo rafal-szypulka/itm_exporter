@@ -101,16 +101,16 @@ type Config struct {
 	ItmServerPassword string        `yaml:"itm_server_password"`
 	ConnectionTimeout time.Duration `yaml:"connection_timeout"`
 	CollectionTimeout time.Duration `yaml:"collection_timeout"`
-	Groups            []Groups      `yaml:"groups"`
+	Groups            []Groups      `yaml:"groups" validate:"required"`
 }
 
 // Groups struct is a subset of Config struct
 type Groups struct {
-	Name               string   `yaml:"name"`
-	DatasetsURI        string   `yaml:"datasets_uri"`
-	Labels             []string `yaml:"labels"`
-	Metrics            []string `yaml:"metrics"`
-	ManagedSystemGroup string   `yaml:"managed_system_group"`
+	Name               string   `yaml:"name" validate:"required"`
+	DatasetsURI        string   `yaml:"datasets_uri" validate:"required"`
+	Labels             []string `yaml:"labels" validate:"required"`
+	Metrics            []string `yaml:"metrics" validate:"required"`
+	ManagedSystemGroup string   `yaml:"managed_system_group" validate:"required"`
 }
 
 // Result struct used by MakeAsyncRequest function it returns both response body and Attribute Group name to Collector method

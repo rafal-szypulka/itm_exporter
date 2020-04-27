@@ -1,6 +1,6 @@
 # ITM Exporter
-ITM Exporter is a Prometheus exporter for IBM Tivoli Monitoring v6 and IBM Application Performance Management v8 (on-prem.
-The exporter uses ITM REST API to collect metrics from IBM ITM/APM. Note that ITM REST API is [not oficially supported](https://developer.ibm.com/answers/questions/358915/is-itm-rest-api-officially-supported-customer-uses/).
+ITM Exporter is a Prometheus exporter for IBM Tivoli Monitoring v6.3, IBM Application Performance Management v8 (on-prem only) and IBM OMEGAMON.
+The exporter uses ITM REST API in order to collect metrics from IBM ITM/APM/OMEGAMON. Note that ITM REST API is [not officially supported](https://developer.ibm.com/answers/questions/358915/is-itm-rest-api-officially-supported-customer-uses/).
 
 
 ## How to use
@@ -72,7 +72,7 @@ groups:
 - `collection_timeout` - maximum time allowed for collecting the latest snapshot of metric values for a single Attribute Group.
 
 
-The section `groups:` specifies which ITM/APM metrics should be collected and exposed by the experter. ITM exporter asynchronically collects metrics for every group. 
+The section `groups:` specifies which ITM/APM metrics should be collected and exposed by the exporter. ITM exporter concurrently collects metrics for every group. 
 
 - `datasets_uri` - it is a part of the API request URL that identifies particular agent type. The exporter helps a bit in the identification of proper `datasets_uri` for the agent type you'd like to collect. Run the following command:
 ```
@@ -162,7 +162,7 @@ Example output:
 | Situation Advice                     | advice          |
 +--------------------------------------+-----------------+
 ```
-- `labels` - list of attributes that should be mapped as Prometheus metric labels (typically string attributes that identify source of the metric like `ORIGINNODE`, `CPUID` or `MOUNTPT`)
+- `labels` - list of attributes that should be mapped as Prometheus metric labels (typically string attributes that identify source of the metric like `ORIGINNODE`, `CPUID` or `MOUNTPT`). As a rule of thumb you should always use at least ORIGINNODE and all other metrics that are primary keys within the attribute group as labels (`listAttributes` command shows which metrics are primary keys), otherwise you may see error about duplicate metrics in the `/metrics` output.
 - `metrics` - numeric metrics names you'd like to collect.
 Metric names can be listed with the following command (example for KLZCPU attribute group within Linux OS dataset):
 ```
@@ -170,22 +170,22 @@ itm_exporter listAttributes --attributeGroup=KLZCPU --dataset=/providers/itm.TEM
 ```
 Example output:
 ```
-+------------------------------+------------+
-|         DESCRIPTION          | ATTRIBUTES |
-+------------------------------+------------+
-| System Name                  | ORIGINNODE |
-| Time Stamp                   | TIMESTAMP  |
-| CPU ID                       | CPUID      |
-| User CPU (Percent)           | USRCPU     |
-| User Nice CPU (Percent)      | USRNCPU    |
-| System CPU (Percent)         | SYSCPU     |
-| Idle CPU (Percent)           | IDLECPU    |
-| Busy CPU (Percent)           | BUSYCPU    |
-| I/O Wait (Percent)           | WAITCPU    |
-| User to System CPU (Percent) | USRSYSCPU  |
-| Steal CPU (Percent)          | STEALCPU   |
-| Recording Time               | WRITETIME  |
-+------------------------------+------------+
++------------------------------+------------+-------------+
+|         DESCRIPTION          | ATTRIBUTES | PRIMARY KEY |
++------------------------------+------------+-------------+
+| System Name                  | ORIGINNODE | false       |
+| Time Stamp                   | TIMESTAMP  | false       |
+| CPU ID                       | CPUID      | true        |
+| User CPU (Percent)           | USRCPU     | false       |
+| User Nice CPU (Percent)      | USRNCPU    | false       |
+| System CPU (Percent)         | SYSCPU     | false       |
+| Idle CPU (Percent)           | IDLECPU    | false       |
+| Busy CPU (Percent)           | BUSYCPU    | false       |
+| I/O Wait (Percent)           | WAITCPU    | false       |
+| User to System CPU (Percent) | USRSYSCPU  | false       |
+| Steal CPU (Percent)          | STEALCPU   | false       |
+| Recording Time               | WRITETIME  | false       |
++------------------------------+------------+-------------+
 ```
 - `managed_system_group` - the name of the managed system group, grouping agents in scope of the collection.
 
@@ -205,7 +205,7 @@ Flags:
                     CURI API password.
       --web.listen-address=":8000"
                     The address to listen on for HTTP requests.
-  -v, --verboseLog  Verbose logging
+  -v, --verboseLog  Verbose logging for export and diagnostic modes.
 
 Commands:
   help [<command>...]
@@ -232,6 +232,12 @@ Commands:
 
   export
     Start itm_exporter in exporter mode.
+
+
+  test --file=FILE
+    Start itm_exporter in diagnostic mode.
+
+    --file=FILE  JSON response
 ```
 
 ## Prometheus Quick Start
