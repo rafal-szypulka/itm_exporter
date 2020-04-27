@@ -164,7 +164,8 @@ Example output:
 ```
 - `labels` - list of attributes that should be mapped as Prometheus metric labels (typically string attributes that identify source of the metric like `ORIGINNODE`, `CPUID` or `MOUNTPT`). As a rule of thumb you should always use at least ORIGINNODE and all other metrics that are primary keys within the attribute group as labels (`listAttributes` command shows which metrics are primary keys), otherwise you may see error about duplicate metrics in the `/metrics` output.
 - `metrics` - numeric metrics names you'd like to collect.
-Metric names can be listed with the following command (example for KLZCPU attribute group within Linux OS dataset):
+
+Attribute names (for mapping with both labels and metrics) can be listed with the following command (example for KLZCPU attribute group within Linux OS dataset):
 ```
 itm_exporter listAttributes --attributeGroup=KLZCPU --dataset=/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets
 ```
