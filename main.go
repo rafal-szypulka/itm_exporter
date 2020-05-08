@@ -96,11 +96,8 @@ func MakeAsyncRequest(urla string, group string, ch chan<- Result) {
 	}
 	u, err := url.Parse(urla)
 	req, err := http.NewRequest("GET", urla, nil)
-	if *itmServerUser != "" {
-		req.SetBasicAuth(*itmServerUser, *itmServerPassword)
-	} else {
-		req.SetBasicAuth(conf.ItmServerUser, conf.ItmServerPassword)
-	}
+
+	req.SetBasicAuth(conf.ItmServerUser, conf.ItmServerPassword)
 
 	if conf.CollectionTimeout != 0 {
 		timeout = conf.CollectionTimeout
@@ -304,7 +301,7 @@ func (c ITMCollector) Collect(ch chan<- prometheus.Metric) {
 				}
 				for j := 0; j < len(items.Items[i].Properties); j++ {
 					if sliceutil.Contains(metrics, items.Items[i].Properties[j].ID) {
-						name := strings.ToLower(invalidChars.ReplaceAllLiteralString(attGroup+"_"+items.Items[i].Properties[j].ID, "_"))
+						name := strings.ToLower(invalidChars.ReplaceAllLiteralString("itm_"+attGroup+"_"+items.Items[i].Properties[j].ID, "_"))
 						desc := prometheus.NewDesc(name, "ITM metric "+items.Items[i].Properties[j].Label, nil, labelmap)
 						value, err := strconv.ParseFloat(strings.Replace(items.Items[i].Properties[j].DisplayValue, ",", ".", -1), 64)
 						log.Debugf("Group: %v | Name: %v | Labels: %v | Value: %v", attGroup, name, labelmap, value)
@@ -440,6 +437,10 @@ func main() {
 	case export.FullCommand():
 		if *verbose {
 			log.SetLevel(log.DebugLevel)
+		}
+		if *itmServerPassword != "" {
+			log.Error("For export mode you have to specify password in the config file.")
+			os.Exit(0)
 		}
 		log.Info("Starting itm_exporter in export mode...")
 		log.Info("Author: Rafal Szypulka")
