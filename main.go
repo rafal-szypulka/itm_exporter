@@ -52,7 +52,7 @@ var (
 	app                        = kingpin.New("itm_exporter", "ITM exporter for Prometheus.")
 	itmServer                  = app.Flag("apmServerURL", "HTTP URL of the CURI REST API server.").Short('s').String()
 	itmServerUser              = app.Flag("apmServerUser", "CURI API user.").Short('u').String()
-	itmServerPassword          = app.Flag("apmServerPassword", "CURI API password.").Short('p').String()
+	itmServerPassword          = app.Flag("apmServerPassword", "CURI API password. For export mode you have to specify it in the config file.").Short('p').String()
 	listenAddress              = app.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":8000").String()
 	verbose                    = app.Flag("verboseLog", "Verbose logging for export and diagnostic modes.").Short('v').Bool()
 	listAttributes             = app.Command("listAttributes", "List available attributes for the given attribute group.")

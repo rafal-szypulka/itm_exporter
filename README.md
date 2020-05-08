@@ -203,7 +203,7 @@ Flags:
   -u, --apmServerUser=APMSERVERUSER
                     CURI API user.
   -p, --apmServerPassword=APMSERVERPASSWORD
-                    CURI API password.
+                    CURI API password. For export mode you have to specify it in the config file.
       --web.listen-address=":8000"
                     The address to listen on for HTTP requests.
   -v, --verboseLog  Verbose logging for export and diagnostic modes.
@@ -218,12 +218,14 @@ Commands:
 
     -g, --attributeGroup=ATTRIBUTEGROUP
                            Attribute group
-    -d, --dataset=DATASET  Dataset (Agent type) URI. You can find it using command: 'itm_exporter listAgentTypes'. Example Dataset URI for Linux OS Agent: '/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets'.
+    -d, --dataset=DATASET  Dataset (Agent type) URI. You can find it using command: 'itm_exporter listAgentTypes'. Example Dataset URI for Linux OS Agent:
+                           '/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets'.
 
   listAttributeGroups --dataset=DATASET [<flags>]
     List available Attribute Groups for the given dataset.
 
-    -d, --dataset=DATASET  Dataset (Agent type) URI. You can find it using command: 'itm_exporter listAgentTypes'. Example Dataset URI for Linux OS Agent: '/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets'.
+    -d, --dataset=DATASET  Dataset (Agent type) URI. You can find it using command: 'itm_exporter listAgentTypes'. Example Dataset URI for Linux OS Agent:
+                           '/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets'.
     -l, --long             List Attributes for every Attribute Group in dataset
 
   listAgentTypes --temsName=TEMSNAME
