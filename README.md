@@ -1,10 +1,10 @@
 # ITM Exporter
-ITM Exporter is a Prometheus exporter for IBM Tivoli Monitoring v6.3, IBM Application Performance Management v8 (on-prem only) and IBM OMEGAMON.
-The exporter uses ITM REST API in order to collect metrics from IBM ITM/APM/OMEGAMON. Note that ITM REST API is [not officially supported](https://developer.ibm.com/answers/questions/358915/is-itm-rest-api-officially-supported-customer-uses/).
+ITM Exporter is a Prometheus exporter for IBM Tivoli Monitoring, IBM Application Performance Management (on-prem only) and IBM OMEGAMON.
+The exporter uses the ITM REST API in order to collect metrics from IBM ITM/APM/OMEGAMON. Note that ITM REST API is [not officially supported](https://developer.ibm.com/answers/questions/358915/is-itm-rest-api-officially-supported-customer-uses/).
 
 
 ## How to use
-Download and unpack the ITM Exporter release. Copy the exporter binary and [config file `config.yaml`](config.yaml) to your ITM v6 TEPS server or IBM APM v8 server.
+Download and unpack the ITM Exporter release. Copy the exporter binary and [config file `config.yaml`](config.yaml) to your ITM TEPS server or IBM APM server. [Edit](#prometheus-configuration) config file as described below.
 
 ```
 itm_exporter export
