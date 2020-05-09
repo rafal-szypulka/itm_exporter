@@ -4,7 +4,7 @@ The exporter uses the ITM REST API in order to collect metrics from IBM ITM/APM/
 
 
 ## How to use
-Download and unpack the ITM Exporter release. Copy the exporter binary and [config file `config.yaml`](config.yaml) to your ITM TEPS server or IBM APM server. [Edit](#prometheus-configuration) config file as described below.
+Download and unpack the latest ITM Exporter [release](https://github.com/rafal-szypulka/itm_exporter/releases). Copy the exporter binary and [config file `config.yaml`](config.yaml) to your ITM TEPS server or IBM APM server. [Edit](#prometheus-configuration) the config file as described in the [ITM exporter configuration](#itm-exporter-configuration) section.
 
 ```
 itm_exporter export
@@ -15,15 +15,7 @@ curl http://localhost:8000/metrics
 ```
 Use flag `--web.listen-address=<port>` to specify port different than `8000`.
 
-Check all available options with:
-```
-itm_exporter --help
-```
-or
-```
-itm_exporter --help-long
-```
-
+Check the [all available CLI options](#itm-exporter-cli-options) with `itm_exporter --help` or `itm_exporter --help-long`.
 
 ## Prometheus configuration
 
@@ -75,7 +67,7 @@ groups:
 The section `groups:` specifies which ITM/APM metrics should be collected and exposed by the exporter. ITM exporter concurrently collects metrics for every group. 
 
 - `datasets_uri` - it is a part of the API request URL that identifies particular agent type. The exporter helps a bit in the identification of proper `datasets_uri` for the agent type you'd like to collect. Run the following command:
-```
+```sh
   itm_exporter listAgentTypes --temsName=TEMS 
 ```
 where `temsName` is your ITM TEMS label like `TEMS` or `KD8` if you connect to APM v8 server.
@@ -94,7 +86,7 @@ Example output:
 +---------------------------------+--------------------------------------------------------------------+
 ```
 - `name` - name of the group you'd like to collect. You can list attribute group names with the following command (example for Linux OS dataset):
-```
+```sh
 itm_exporter listAttributeGroups --dataset=/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets
 ```
 Example output:
@@ -166,7 +158,7 @@ Example output:
 - `metrics` - numeric metrics names you'd like to collect.
 
 Attribute names (for mapping with both labels and metrics) can be listed with the following command (example for KLZCPU attribute group within Linux OS dataset):
-```
+```sh
 itm_exporter listAttributes --attributeGroup=KLZCPU --dataset=/providers/itm.TEMS/datasources/TMSAgent.%25IBM.STATIC134/datasets
 ```
 Example output:
