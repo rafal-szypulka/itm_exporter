@@ -166,7 +166,7 @@
       ],
       "targets": [
         {
-          "expr": "msys_available{originnode=\"$os\"}",
+          "expr": "itm_msys_available{originnode=\"$os\"}",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -216,7 +216,7 @@
       "pluginVersion": "6.5.2",
       "targets": [
         {
-          "expr": "klzcpu_busycpu{originnode=\"$os\"}",
+          "expr": "itm_klzcpu_busycpu{originnode=\"$os\"}",
           "instant": false,
           "legendFormat": "cpuid: {{ cpuid }}",
           "refId": "A"
@@ -270,7 +270,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "klzcpu_busycpu{originnode=\"$os\"}",
+          "expr": "itm_klzcpu_busycpu{originnode=\"$os\"}",
           "legendFormat": "cpuid: {{ cpuid }}",
           "refId": "A"
         }
@@ -354,7 +354,7 @@
       "pluginVersion": "6.5.2",
       "targets": [
         {
-          "expr": "klzdisk_dskusedpct{originnode=\"$os\"} > 0",
+          "expr": "itm_klzdisk_dskusedpct{originnode=\"$os\"} > 0",
           "format": "time_series",
           "instant": true,
           "legendFormat": "{{ mountpt }}",
@@ -459,7 +459,7 @@
       ],
       "targets": [
         {
-          "expr": "klzdisk_dskusedpct{originnode=\"$os\"} > 0",
+          "expr": "itm_klzdisk_dskusedpct{originnode=\"$os\"} > 0",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -514,7 +514,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "klznet_transbps{originnode=\"$os\"}",
+          "expr": "itm_klznet_transbps{originnode=\"$os\"}",
           "legendFormat": "{{ fname }}",
           "refId": "A"
         }
@@ -599,7 +599,7 @@
       "pluginVersion": "6.5.2",
       "targets": [
         {
-          "expr": "klzvm_netmemupct{originnode=\"$os\"}",
+          "expr": "itm_klzvm_netmemupct{originnode=\"$os\"}",
           "refId": "A"
         }
       ],
@@ -647,7 +647,7 @@
       "pluginVersion": "6.5.2",
       "targets": [
         {
-          "expr": "klzvm_totmemfpct{originnode=\"$os\"}",
+          "expr": "itm_klzvm_totmemfpct{originnode=\"$os\"}",
           "refId": "A"
         }
       ],

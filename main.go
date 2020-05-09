@@ -315,7 +315,7 @@ func (c ITMCollector) Collect(ch chan<- prometheus.Metric) {
 				}
 			}
 			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc("itm_scrape_duration_seconds", "Time ITM attribute group scrape took.", nil, map[string]string{"group": result.group}),
+				prometheus.NewDesc("itm_scrape_duration_seconds", "ITM attribute group scrape duration.", nil, map[string]string{"group": result.group}),
 				prometheus.GaugeValue,
 				time.Since(start).Seconds())
 		}
@@ -323,7 +323,7 @@ func (c ITMCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(up, prometheus.GaugeValue, 0)
 	}
 	ch <- prometheus.MustNewConstMetric(
-		prometheus.NewDesc("itm_scrape_duration_seconds_total", "Time ITM scrape took.", nil, nil),
+		prometheus.NewDesc("itm_scrape_duration_seconds_all", "Total ITM scrape duration.", nil, nil),
 		prometheus.GaugeValue,
 		time.Since(start).Seconds())
 }

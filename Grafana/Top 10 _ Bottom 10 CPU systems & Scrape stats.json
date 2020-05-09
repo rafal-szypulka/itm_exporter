@@ -105,7 +105,7 @@
       "pluginVersion": "6.5.2",
       "targets": [
         {
-          "expr": "topk(10,avg_over_time(klzcpu_busycpu{cpuid=\"Aggregate\"}[10m]))",
+          "expr": "topk(10,avg_over_time(itm_klzcpu_busycpu{cpuid=\"Aggregate\"}[10m]))",
           "format": "time_series",
           "instant": true,
           "legendFormat": "{{ originnode }}",
@@ -156,7 +156,7 @@
       "pluginVersion": "6.5.2",
       "targets": [
         {
-          "expr": "bottomk(10,avg_over_time(klzcpu_busycpu{cpuid=\"Aggregate\"}[10m]))",
+          "expr": "bottomk(10,avg_over_time(itm_klzcpu_busycpu{cpuid=\"Aggregate\"}[10m]))",
           "format": "time_series",
           "instant": true,
           "legendFormat": "{{ originnode }}",
@@ -209,7 +209,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "scrape_duration_seconds",
+          "expr": "itm_scrape_duration_seconds",
           "refId": "A"
         }
       ],
@@ -454,7 +454,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(msys_available == 1)",
+          "expr": "count(itm_msys_available == 1)",
           "instant": false,
           "refId": "A"
         }
@@ -538,7 +538,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "count(msys_available == 1)",
+          "expr": "count(itm_msys_available == 1)",
           "refId": "A"
         }
       ],
