@@ -115,6 +115,7 @@ type Groups struct {
 
 // Result struct used by MakeAsyncRequest function it returns both response body and Attribute Group name to Collector method
 type Result struct {
-	group string
-	body  []byte
+	group  string
+	body   []byte
+	status float64
 }

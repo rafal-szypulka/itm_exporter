@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -43,16 +44,12 @@ type ITMCollector struct {
 
 // Describe Implements prometheus.Collector.
 func (c ITMCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- up
 }
 
 var (
 	c                          Config
 	conf                       = c.getConf()
 	app                        = kingpin.New("itm_exporter", "ITM exporter for Prometheus.")
-	itmServer                  = app.Flag("apmServerURL", "HTTP URL of the CURI REST API server.").Short('s').String()
-	itmServerUser              = app.Flag("apmServerUser", "CURI API user.").Short('u').String()
-	itmServerPassword          = app.Flag("apmServerPassword", "CURI API password. For export mode you have to specify it in the config file.").Short('p').String()
 	listenAddress              = app.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":8000").String()
 	verbose                    = app.Flag("verboseLog", "Verbose logging for export and diagnostic modes.").Short('v').Bool()
 	listAttributes             = app.Command("listAttributes", "List available attributes for the given attribute group.")
@@ -77,17 +74,18 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	registry := prometheus.NewRegistry()
 	collector := &ITMCollector{}
 	registry.MustRegister(collector)
-	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
+	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{ErrorHandling: promhttp.ContinueOnError})
 	h.ServeHTTP(w, r)
 }
 
 // MakeAsyncRequest makes HTTP request to the CURI API. To be used in a go routine within Collector method
 func MakeAsyncRequest(urla string, group string, ch chan<- Result) {
 	var (
-		itmUser  string
-		itmPass  string
-		jsession http.Cookie
-		timeout  time.Duration
+		itmUser          string
+		itmPass          string
+		jsession         http.Cookie
+		timeout          time.Duration
+		collectionStatus float64
 	)
 
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
@@ -123,6 +121,9 @@ func MakeAsyncRequest(urla string, group string, ch chan<- Result) {
 	if resp.StatusCode != 200 {
 		b, _ := ioutil.ReadAll(resp.Body)
 		log.Error(string(b))
+		collectionStatus = 0
+	} else {
+		collectionStatus = 1
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -132,6 +133,7 @@ func MakeAsyncRequest(urla string, group string, ch chan<- Result) {
 	res := new(Result)
 	res.body = body
 	res.group = group
+	res.status = collectionStatus
 
 	urlDelete := strings.Replace(urla, "/items", "", -1)
 	req, err = http.NewRequest("DELETE", urlDelete, nil)
@@ -168,11 +170,8 @@ func MakeRequest(url string) ([]byte, int, error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 
-	if *itmServerUser != "" {
-		req.SetBasicAuth(*itmServerUser, *itmServerPassword)
-	} else {
-		req.SetBasicAuth(conf.ItmServerUser, conf.ItmServerPassword)
-	}
+	req.SetBasicAuth(conf.ItmServerUser, conf.ItmServerPassword)
+
 	if conf.ConnectionTimeout != 0 {
 		timeout = conf.ConnectionTimeout
 	} else {
@@ -191,12 +190,12 @@ func MakeRequest(url string) ([]byte, int, error) {
 	if resp.StatusCode >= 500 {
 		b, _ := ioutil.ReadAll(resp.Body)
 		log.Error(string(b))
-		return b, resp.StatusCode, err
+		return b, resp.StatusCode, errors.New("Error: HTTP response code 5xx")
 	}
 
 	if resp.StatusCode >= 400 && resp.StatusCode <= 499 {
 		log.Error("Response status code:", resp.StatusCode)
-		return nil, resp.StatusCode, nil
+		return nil, resp.StatusCode, errors.New("Error: HTTP response code 4xx")
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -210,117 +209,115 @@ func MakeRequest(url string) ([]byte, int, error) {
 func (c ITMCollector) Collect(ch chan<- prometheus.Metric) {
 
 	var (
-		itmServerURL string
-		metricGroup  string
-		url          string
-		statusCode   int
+		metricGroup string
+		url         string
 	)
-
-	if *itmServer != "" {
-		itmServerURL = *itmServer
-	} else {
-		itmServerURL = conf.ItmServerURL
-	}
 
 	start := time.Now()
 
-	_, statusCode, err := MakeRequest(itmServerURL + "/ibm/tivoli/rest/providers")
-	if (err == nil && statusCode == 200) || diag {
-		ch <- prometheus.MustNewConstMetric(up, prometheus.GaugeValue, 1)
-		itm := make(chan Result)
-		for _, group := range conf.Groups {
-			guid := xid.New()
-			err := validate.Struct(group)
-			if err != nil {
-				log.Error(err)
-			}
-			//msys is a special group and goes without "MetricGroup." prefix
-			if group.Name == "msys" {
-				metricGroup = "/msys"
-			} else {
-				metricGroup = "/MetricGroup." + group.Name
-			}
-			if group.Name == "KLZNET" {
-				url = itmServerURL + "/ibm/tivoli/rest" + group.DatasetsURI +
-					metricGroup + "/items?param_SourceToken=" + group.ManagedSystemGroup +
-					"&optimize=true&param_refId=" +
-					guid.String() + "&properties=all"
-			} else {
-				url = itmServerURL + "/ibm/tivoli/rest" + group.DatasetsURI +
-					metricGroup + "/items?param_SourceToken=" + group.ManagedSystemGroup +
-					"&optimize=true&param_refId=" +
-					guid.String() + "&properties=" + strings.Join(group.Labels, ",") + "," +
-					strings.Join(group.Metrics, ",")
-			}
-			log.Debug("ITM API REQUEST: " + url)
-			if diag {
-				go Diag(group.Name, itm)
-			} else {
-				go MakeAsyncRequest(url, group.Name, itm)
+	if !diag {
+		_, responseCode, err := MakeRequest(conf.ItmServerURL + "/ibm/tivoli/rest/providers")
+		if responseCode != 200 {
+			ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("itm_error", "Error scraping target", nil, nil), err)
+			return
+		}
+	}
+
+	itm := make(chan Result)
+
+	for _, group := range conf.Groups {
+		guid := xid.New()
+		err := validate.Struct(group)
+		if err != nil {
+			log.Error(err)
+		}
+		//msys is a special group and goes without "MetricGroup." prefix
+		if group.Name == "msys" {
+			metricGroup = "/msys"
+		} else {
+			metricGroup = "/MetricGroup." + group.Name
+		}
+		if group.Name == "KLZNET" {
+			url = conf.ItmServerURL + "/ibm/tivoli/rest" + group.DatasetsURI +
+				metricGroup + "/items?param_SourceToken=" + group.ManagedSystemGroup +
+				"&optimize=true&param_refId=" +
+				guid.String() + "&properties=all"
+		} else {
+			url = conf.ItmServerURL + "/ibm/tivoli/rest" + group.DatasetsURI +
+				metricGroup + "/items?param_SourceToken=" + group.ManagedSystemGroup +
+				"&optimize=true&param_refId=" +
+				guid.String() + "&properties=" + strings.Join(group.Labels, ",") + "," +
+				strings.Join(group.Metrics, ",")
+		}
+		log.Debug("ITM API REQUEST: " + url)
+		if diag {
+			go Diag(group.Name, itm)
+		} else {
+			go MakeAsyncRequest(url, group.Name, itm)
+		}
+	}
+
+	for range conf.Groups {
+		var (
+			items    Items
+			labels   []string
+			metrics  []string
+			attGroup string
+		)
+
+		result := <-itm
+
+		if diag {
+			byteFile, _ := ioutil.ReadFile(*testFile)
+			json.Unmarshal(byteFile, &items)
+		} else {
+			json.Unmarshal([]byte(result.body), &items)
+		}
+
+		//log.Debug(string(result.body))
+		for _, g := range conf.Groups {
+			if g.Name == result.group {
+				labels = g.Labels
+				metrics = g.Metrics
+				attGroup = g.Name
 			}
 		}
 
-		for range conf.Groups {
-			var (
-				items    Items
-				labels   []string
-				metrics  []string
-				attGroup string
-			)
-
-			result := <-itm
-
-			if diag {
-				byteFile, _ := ioutil.ReadFile(*testFile)
-				json.Unmarshal(byteFile, &items)
-			} else {
-				json.Unmarshal([]byte(result.body), &items)
-			}
-
-			//log.Debug(string(result.body))
-			for _, g := range conf.Groups {
-				if g.Name == result.group {
-					labels = g.Labels
-					metrics = g.Metrics
-					attGroup = g.Name
-				}
-			}
-
-			for i := 0; i < len(items.Items); i++ {
-				labelmap := make(map[string]string)
-				for j := 0; j < len(items.Items[i].Properties); j++ {
-					for _, label := range labels {
-						if label == items.Items[i].Properties[j].ID {
-							if items.Items[i].Properties[j].DisplayValue != "" {
-								labelmap[strings.ToLower(label)] = items.Items[i].Properties[j].DisplayValue
-							} else {
-								labelmap[strings.ToLower(label)] = items.Items[i].Properties[j].Value.String()
-							}
+		for i := 0; i < len(items.Items); i++ {
+			labelmap := make(map[string]string)
+			for j := 0; j < len(items.Items[i].Properties); j++ {
+				for _, label := range labels {
+					if label == items.Items[i].Properties[j].ID {
+						if items.Items[i].Properties[j].DisplayValue != "" {
+							labelmap[strings.ToLower(label)] = items.Items[i].Properties[j].DisplayValue
+						} else {
+							labelmap[strings.ToLower(label)] = items.Items[i].Properties[j].Value.String()
 						}
 					}
 				}
-				for j := 0; j < len(items.Items[i].Properties); j++ {
-					if sliceutil.Contains(metrics, items.Items[i].Properties[j].ID) {
-						name := strings.ToLower(invalidChars.ReplaceAllLiteralString("itm_"+attGroup+"_"+items.Items[i].Properties[j].ID, "_"))
-						desc := prometheus.NewDesc(name, "ITM metric "+items.Items[i].Properties[j].Label, nil, labelmap)
-						value, err := strconv.ParseFloat(strings.Replace(items.Items[i].Properties[j].DisplayValue, ",", ".", -1), 64)
-						log.Debugf("Group: %v | Name: %v | Labels: %v | Value: %v", attGroup, name, labelmap, value)
-						if err != nil {
-							//fmt.Println(err, items.Items[i].Properties[j].ID)
-							value, _ = items.Items[i].Properties[j].Value.Float64()
-						}
-						ch <- prometheus.MustNewConstMetric(
-							desc, prometheus.GaugeValue, value)
+			}
+			for j := 0; j < len(items.Items[i].Properties); j++ {
+				if sliceutil.Contains(metrics, items.Items[i].Properties[j].ID) {
+					name := strings.ToLower(invalidChars.ReplaceAllLiteralString("itm_"+attGroup+"_"+items.Items[i].Properties[j].ID, "_"))
+					desc := prometheus.NewDesc(name, items.Items[i].Properties[j].Label, nil, labelmap)
+					value, err := strconv.ParseFloat(strings.Replace(items.Items[i].Properties[j].DisplayValue, ",", ".", -1), 64)
+					log.Debugf("Group: %v | Name: %v | Labels: %v | Value: %v", attGroup, name, labelmap, value)
+					if err != nil {
+						//fmt.Println(err, items.Items[i].Properties[j].ID)
+						value, _ = items.Items[i].Properties[j].Value.Float64()
 					}
+					ch <- prometheus.MustNewConstMetric(
+						desc, prometheus.GaugeValue, value)
 				}
 			}
-			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc("itm_scrape_duration_seconds", "ITM attribute group scrape duration.", nil, map[string]string{"group": result.group}),
-				prometheus.GaugeValue,
-				time.Since(start).Seconds())
 		}
-	} else {
-		ch <- prometheus.MustNewConstMetric(up, prometheus.GaugeValue, 0)
+		ch <- prometheus.MustNewConstMetric(
+			prometheus.NewDesc("itm_scrape_duration_seconds", "ITM attribute group scrape duration.", []string{"group"}, nil),
+			prometheus.GaugeValue,
+			time.Since(start).Seconds(), result.group)
+		ch <- prometheus.MustNewConstMetric(
+			prometheus.NewDesc("itm_scrape_status", "ITM attribute group scrape status.", []string{"group"}, nil),
+			prometheus.GaugeValue, float64(result.status), result.group)
 	}
 	ch <- prometheus.MustNewConstMetric(
 		prometheus.NewDesc("itm_scrape_duration_seconds_all", "Total ITM scrape duration.", nil, nil),
@@ -347,16 +344,10 @@ func main() {
 		DisableColors: true,
 		FullTimestamp: true,
 	})
-	var itmServerURL string
 
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAutoWrapText(false)
 	kingpin.HelpFlag.Short('h')
-	if *itmServer != "" {
-		itmServerURL = *itmServer
-	} else {
-		itmServerURL = conf.ItmServerURL
-	}
 
 	validate = validator.New()
 
@@ -365,7 +356,7 @@ func main() {
 		var datasource Datasource
 		table.SetHeader([]string{"Agent Type", "Dataset URI"})
 
-		responseBody, statusCode, err := MakeRequest(itmServerURL + "/ibm/tivoli/rest/providers/itm." + url.QueryEscape(*listAgentTypesTEMS) + "/datasources")
+		responseBody, statusCode, err := MakeRequest(conf.ItmServerURL + "/ibm/tivoli/rest/providers/itm." + url.QueryEscape(*listAgentTypesTEMS) + "/datasources")
 		if err == nil && statusCode == 200 {
 			json.Unmarshal([]byte(responseBody), &datasource)
 			for i := 0; i < len(datasource.Items); i++ {
@@ -380,15 +371,15 @@ func main() {
 		var dataset Dataset
 		var column Columns
 		table.SetHeader([]string{"Description", "Attribute Group"})
-		responseBody, statusCode, err := MakeRequest(itmServerURL + "/ibm/tivoli/rest" + *listAttributeGroupsDataset)
+		responseBody, statusCode, err := MakeRequest(conf.ItmServerURL + "/ibm/tivoli/rest" + *listAttributeGroupsDataset)
 		if err == nil && statusCode == 200 {
 			json.Unmarshal([]byte(responseBody), &dataset)
 			for i := 0; i < len(dataset.Items); i++ {
 				if *listAGLong == true {
 					if *listAttributesGroup == "msys" {
-						responseBody, statusCode, err = MakeRequest(itmServerURL + "/ibm/tivoli/rest" + *listAttributesDataset + "/msys/columns")
+						responseBody, statusCode, err = MakeRequest(conf.ItmServerURL + "/ibm/tivoli/rest" + *listAttributesDataset + "/msys/columns")
 					} else {
-						responseBody, statusCode, err = MakeRequest(itmServerURL + "/ibm/tivoli/rest" + *listAttributeGroupsDataset + "/" + dataset.Items[i].ID + "/columns")
+						responseBody, statusCode, err = MakeRequest(conf.ItmServerURL + "/ibm/tivoli/rest" + *listAttributeGroupsDataset + "/" + dataset.Items[i].ID + "/columns")
 					}
 					if err == nil && statusCode == 200 {
 						json.Unmarshal([]byte(responseBody), &column)
@@ -419,9 +410,9 @@ func main() {
 
 		table.SetHeader([]string{"Description", "Attributes", "Primary Key"})
 		if *listAttributesGroup == "msys" {
-			responseBody, statusCode, err = MakeRequest(itmServerURL + "/ibm/tivoli/rest" + *listAttributesDataset + "/msys/columns")
+			responseBody, statusCode, err = MakeRequest(conf.ItmServerURL + "/ibm/tivoli/rest" + *listAttributesDataset + "/msys/columns")
 		} else {
-			responseBody, statusCode, err = MakeRequest(itmServerURL + "/ibm/tivoli/rest" + *listAttributesDataset + "/MetricGroup." + *listAttributesGroup + "/columns")
+			responseBody, statusCode, err = MakeRequest(conf.ItmServerURL + "/ibm/tivoli/rest" + *listAttributesDataset + "/MetricGroup." + *listAttributesGroup + "/columns")
 		}
 		if err == nil && statusCode == 200 {
 			json.Unmarshal([]byte(responseBody), &column)
@@ -438,10 +429,7 @@ func main() {
 		if *verbose {
 			log.SetLevel(log.DebugLevel)
 		}
-		if *itmServerPassword != "" {
-			log.Error("For export mode you have to specify password in the config file.")
-			os.Exit(0)
-		}
+		diag = false
 		log.Info("Starting itm_exporter in export mode...")
 		log.Info("Author: Rafal Szypulka")
 	case test.FullCommand():

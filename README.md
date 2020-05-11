@@ -13,7 +13,43 @@ The above should start an exporter on default port `8000`. You can check if it w
 ```
 curl http://localhost:8000/metrics
 ```
-Use flag `--web.listen-address=<port>` to specify port different than `8000`.
+
+## Example output
+```
+# HELP itm_klzcpu_busycpu Busy CPU (Percent)
+# TYPE itm_klzcpu_busycpu gauge
+itm_klzcpu_busycpu{cpuid="0",originnode="rs41:LZ"} 48.19
+itm_klzcpu_busycpu{cpuid="1",originnode="rs41:LZ"} 46.7
+itm_klzcpu_busycpu{cpuid="2",originnode="rs41:LZ"} 44.33
+itm_klzcpu_busycpu{cpuid="3",originnode="rs41:LZ"} 48.55
+itm_klzcpu_busycpu{cpuid="Aggregate",originnode="rs41:LZ"} 46.94
+# HELP itm_klzvm_memusedpct Memory Used (Percent)
+# TYPE itm_klzvm_memusedpct gauge
+itm_klzvm_memusedpct{originnode="rs41:LZ"} 99
+# HELP itm_klzvm_vsfreepct Free Virtual Storage (Percent)
+# TYPE itm_klzvm_vsfreepct gauge
+itm_klzvm_vsfreepct{originnode="rs41:LZ"} 51
+# HELP itm_klznet_transbps Bytes Transmitted Per Second
+# TYPE itm_klznet_transbps gauge
+itm_klznet_transbps{fname="eth0",originnode="rs41:LZ"} 0
+itm_klznet_transbps{fname="eth1",originnode="rs41:LZ"} 545
+itm_klznet_transbps{fname="lo",originnode="rs41:LZ"} 2.819566e+06
+itm_klznet_transbps{fname="virbr0",originnode="rs41:LZ"} 0
+itm_klznet_transbps{fname="virbr0-nic",originnode="rs41:LZ"} 0
+# HELP itm_scrape_duration_seconds ITM attribute group scrape duration.
+# TYPE itm_scrape_duration_seconds gauge
+itm_scrape_duration_seconds{group="KLZCPU"} 1.987053388
+itm_scrape_duration_seconds{group="KLZVM"} 1.231467763
+itm_scrape_duration_seconds{group="KLZNET"} 1.172930966
+# HELP itm_scrape_duration_seconds_all Total ITM scrape duration.
+# TYPE itm_scrape_duration_seconds_all gauge
+itm_scrape_duration_seconds_all 1.987057969
+# HELP itm_scrape_status ITM attribute group scrape status.
+# TYPE itm_scrape_status gauge
+itm_scrape_status{group="KLZCPU"} 1
+itm_scrape_status{group="KLZVM"} 1
+itm_scrape_status{group="KLZNET"} 1
+```
 
 Check the [all available CLI options](#itm-exporter-cli-options) with `itm_exporter --help` or `itm_exporter --help-long`.
 
@@ -55,6 +91,16 @@ groups:
   labels: ["ORIGINNODE", "DSKNAME", "MOUNTPT"]
   metrics: ["DSKFREEPCT", "DSKUSEDPCT", "DSKFREE", "DSKUSED", "INDFREEPCT"]
   managed_system_group: "*LINUX_SYSTEM"
+- name: "KLZNET"
+  datasets_uri: '/providers/itm.TEMS_1%3A2-3/datasources/TMSAgent.%25IBM.STATIC134/datasets'
+  labels: ["ORIGINNODE", "FNAME"]
+  metrics: ["TRANSBPS"]
+  managed_system_group: "*LINUX_SYSTEM"
+- name: "msys"
+  datasets_uri: "/providers/itm.TEMS_1%3A2-3/datasources/TMSAgent.%26IBM.STATIC000/datasets"
+  labels: ["ORIGINNODE", "PRODUCT", "AFFPRODUCT", "VERSION", "OSPLATFORM", "NETADDR", "HOSTNAME"]
+  metrics: ["AVAILABLE"]
+  managed_system_group: "*TEMS"
 ```
 
 - `itm_server_url` - HTTP URL of your TEPS or APM Server, ex.: "http://localhost:15210"
@@ -190,12 +236,6 @@ ITM exporter for Prometheus.
 
 Flags:
       --help        Show context-sensitive help (also try --help-long and --help-man).
-  -s, --apmServerURL=APMSERVERURL
-                    HTTP URL of the CURI REST API server.
-  -u, --apmServerUser=APMSERVERUSER
-                    CURI API user.
-  -p, --apmServerPassword=APMSERVERPASSWORD
-                    CURI API password. For export mode you have to specify it in the config file.
       --web.listen-address=":8000"
                     The address to listen on for HTTP requests.
   -v, --verboseLog  Verbose logging for export and diagnostic modes.
