@@ -19,3 +19,13 @@ groups:
   labels: ["ORIGINNODE", "DSKNAME", "MOUNTPT"]
   metrics: ["DSKFREEPCT", "DSKUSEDPCT", "DSKFREE", "DSKUSED", "INDFREEPCT"]
   managed_system_group: "*LINUX_SYSTEM"
+- name: "KLZNET"
+  datasets_uri: '/providers/itm.TEMS_1%3A2-3/datasources/TMSAgent.%25IBM.STATIC134/datasets'
+  labels: ["ORIGINNODE", "FNAME"]
+  metrics: ["TRANSBPS"]
+  managed_system_group: "*LINUX_SYSTEM"
+- name: "msys"
+  datasets_uri: "/providers/itm.TEMS_1%3A2-3/datasources/TMSAgent.%26IBM.STATIC000/datasets"
+  labels: ["ORIGINNODE", "PRODUCT", "AFFPRODUCT", "VERSION", "OSPLATFORM", "NETADDR", "HOSTNAME"]
+  metrics: ["AVAILABLE"]
+  managed_system_group: "*TEMS"
