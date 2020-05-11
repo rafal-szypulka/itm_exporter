@@ -4,7 +4,7 @@ The exporter uses the ITM REST API in order to collect metrics from IBM ITM/APM/
 
 
 ## How to use
-Download and unpack the latest ITM Exporter [release](https://github.com/rafal-szypulka/itm_exporter/releases). Copy the exporter binary and [config file `config.yaml`](config.yaml) to your ITM TEPS server or IBM APM server. [Edit](#prometheus-configuration) the config file as described in the [ITM exporter configuration](#itm-exporter-configuration) section.
+Download and unpack the latest ITM Exporter [release](https://github.com/rafal-szypulka/itm_exporter/releases). Copy the exporter binary and [config file `config.yaml`](config.yaml) to your ITM TEPS server or IBM APM server. Edit the config file as described in the [ITM exporter configuration](#itm-exporter-configuration) section.
 
 ```
 itm_exporter export
