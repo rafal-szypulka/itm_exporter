@@ -79,7 +79,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 // MakeAsyncRequest makes HTTP request to the CURI API. To be used in a go routine within Collector method
-func MakeAsyncRequest(urla string, group string, ch chan<- Result) {
+func MakeAsyncRequest(urla string, group string, result chan<- Result) {
 	var (
 		itmUser          string
 		itmPass          string
@@ -107,54 +107,57 @@ func MakeAsyncRequest(urla string, group string, ch chan<- Result) {
 		Timeout: timeout * time.Second,
 		Jar:     jar,
 	}
+	res := new(Result)
 	resp, err := cli.Do(req)
+
 	if err != nil {
 		log.Error(err)
-	}
-	defer resp.Body.Close()
-	for _, cookie := range jar.Cookies(u) {
-		if cookie.Name == "JSESSIONID" {
-			jsession = http.Cookie{Name: cookie.Name, Value: cookie.Value, HttpOnly: false}
+		res.status = 0
+		res.group = group
+	} else {
+		defer resp.Body.Close()
+		for _, cookie := range jar.Cookies(u) {
+			if cookie.Name == "JSESSIONID" {
+				jsession = http.Cookie{Name: cookie.Name, Value: cookie.Value, HttpOnly: false}
+			}
+		}
+
+		if resp.StatusCode != 200 {
+			b, _ := ioutil.ReadAll(resp.Body)
+			log.Error(string(b))
+			collectionStatus = 0
+		} else {
+			collectionStatus = 1
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Error(err)
+		}
+
+		res.body = body
+		res.group = group
+		res.status = collectionStatus
+
+		urlDelete := strings.Replace(urla, "/items", "", -1)
+		req, err = http.NewRequest("DELETE", urlDelete, nil)
+		req.SetBasicAuth(itmUser, itmPass)
+		req.AddCookie(&jsession)
+
+		resp, err = cli.Do(req)
+		if err != nil {
+			log.Error(err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			b, _ := ioutil.ReadAll(resp.Body)
+			log.Error(string(b))
+		}
+		body, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Error(err)
 		}
 	}
-
-	if resp.StatusCode != 200 {
-		b, _ := ioutil.ReadAll(resp.Body)
-		log.Error(string(b))
-		collectionStatus = 0
-	} else {
-		collectionStatus = 1
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Error(err)
-	}
-
-	res := new(Result)
-	res.body = body
-	res.group = group
-	res.status = collectionStatus
-
-	urlDelete := strings.Replace(urla, "/items", "", -1)
-	req, err = http.NewRequest("DELETE", urlDelete, nil)
-	req.SetBasicAuth(itmUser, itmPass)
-	req.AddCookie(&jsession)
-
-	resp, err = cli.Do(req)
-	if err != nil {
-		log.Error(err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		b, _ := ioutil.ReadAll(resp.Body)
-		log.Error(string(b))
-	}
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Error(err)
-	}
-
-	ch <- *res
+	result <- *res
 }
 
 // Diag is used only in diagnostic mode (instead of real API request)
