@@ -48,8 +48,9 @@ func (c ITMCollector) Describe(ch chan<- *prometheus.Desc) {
 
 var (
 	c                          Config
-	conf                       = c.getConf()
+	conf                       *Config
 	app                        = kingpin.New("itm_exporter", "ITM exporter for Prometheus.")
+	configfile                 = app.Flag("configFile", "Configuration file").Default("config.yaml").Short('c').String()
 	listenAddress              = app.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":8000").String()
 	verbose                    = app.Flag("verboseLog", "Verbose logging for export and diagnostic modes.").Short('v').Bool()
 	listAttributes             = app.Command("listAttributes", "List available attributes for the given attribute group.")
@@ -331,13 +332,13 @@ func (c ITMCollector) Collect(ch chan<- prometheus.Metric) {
 // getConf reads the config yaml file and returns *Config
 func (c *Config) getConf() *Config {
 
-	yamlFile, err := ioutil.ReadFile("config.yaml")
+	yamlFile, err := ioutil.ReadFile(*configfile)
 	if err != nil {
-		log.Errorf("yamlFile.Get err   #%v ", err)
+		log.Fatalf("Config file read error: %v ", err)
 	}
 	err = yaml.Unmarshal(yamlFile, c)
 	if err != nil {
-		log.Errorf("Unmarshal: %v", err)
+		log.Fatalf("YAML parsing error: %v", err)
 	}
 	return c
 }
@@ -354,7 +355,11 @@ func main() {
 
 	validate = validator.New()
 
-	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
+	arg := kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	conf = c.getConf()
+
+	switch arg {
 	case listAgentTypes.FullCommand():
 		var datasource Datasource
 		table.SetHeader([]string{"Agent Type", "Dataset URI"})
